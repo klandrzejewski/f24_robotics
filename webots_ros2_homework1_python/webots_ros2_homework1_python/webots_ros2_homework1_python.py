@@ -120,7 +120,12 @@ class RoomExplorer(Node):
 
     def timer_callback(self):
         if len(self.scan_cleaned) == 0 or self.current_pos is None:
+            self.turtlebot_moving = False
             return
+        
+        left_lidar_min = min(self.scan_cleaned[LEFT_SIDE_INDEX:LEFT_FRONT_INDEX])
+        right_lidar_min = min(self.scan_cleaned[RIGHT_FRONT_INDEX:RIGHT_SIDE_INDEX])
+        front_lidar_min = min(self.scan_cleaned[LEFT_FRONT_INDEX:RIGHT_FRONT_INDEX])
 
         if self.target_location is None or self.euclidean_distance(self.current_pos, self.target_location) < TARGET_REACHED_THRESHOLD:
             # If no target or the target is reached, evaluate new candidate frontiers
@@ -129,8 +134,17 @@ class RoomExplorer(Node):
         if self.target_location:
             self.move_to_target(self.target_location)
 
-        if self.stall:
-            self.cmd.linear.x = -0.1  # Reverse to recover from stall
+        if front_lidar_min < LIDAR_AVOID_DISTANCE:
+                self.cmd.linear.x = 0.07 
+                if (right_lidar_min > left_lidar_min):
+                   self.cmd.angular.z = -0.3
+                else:
+                   self.cmd.angular.z = 0.3
+                self.publisher_.publish(self.cmd)
+                self.get_logger().info('Turning')
+                self.turtlebot_moving = True
+        elif self.stall:
+            self.cmd.linear.x = -0.3  # Reverse to recover from stall
             self.cmd.angular.z = 0.5  # Rotate to find a new path
             self.publisher_.publish(self.cmd)
             self.stall = False  # Reset stall
