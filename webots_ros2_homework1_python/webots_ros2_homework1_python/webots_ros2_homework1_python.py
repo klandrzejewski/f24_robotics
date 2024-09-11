@@ -16,12 +16,15 @@ RIGHT_FRONT_INDEX = 210
 LEFT_FRONT_INDEX = 150
 LEFT_SIDE_INDEX = 90
 ALPHA = 0.5  # Weight for utility function (balance between distance and information gain)
+TARGET_REACHED_THRESHOLD = 0.2  # Distance threshold to consider target reached
+TURNING_SPEED = 0.3  # Angular speed when turning toward a target
 
-class RandomWalk(Node):
+class RoomExplorer(Node):
 
     def __init__(self):
-        super().__init__('random_walk_node')
+        super().__init__('room_explorer_node')
         self.scan_cleaned = []
+        self.target_location = None
         self.stall = False
         self.turtlebot_moving = False
         self.publisher_ = self.create_publisher(Twist, 'cmd_vel', 10)
@@ -67,19 +70,15 @@ class RandomWalk(Node):
         self.pose_saved = self.current_pos  # Save current position for next comparison
 
     def identify_frontiers(self):
-        # Simple method to identify frontiers (boundaries between known and unknown space)
-        # We'll treat areas with long distances (indicating empty space) as frontiers.
         self.candidate_locations = []  # Reset frontiers
         for i in range(len(self.scan_cleaned)):
             if self.scan_cleaned[i] > SAFE_STOP_DISTANCE:  # Identify frontiers based on safe distance
-                # Assume a simple 2D grid and find the middle points of detected frontiers
                 angle = (i * math.pi / 180.0)  # Convert index to angle
                 x = self.current_pos.x + self.scan_cleaned[i] * math.cos(angle)
                 y = self.current_pos.y + self.scan_cleaned[i] * math.sin(angle)
                 self.candidate_locations.append((x, y))  # Save as a candidate frontier location
 
     def evaluate_candidates(self):
-        # Use the utility function to score candidate frontiers
         best_candidate = None
         best_utility = -float('Inf')
         for candidate in self.candidate_locations:
@@ -92,44 +91,55 @@ class RandomWalk(Node):
         return best_candidate
 
     def max_distance(self):
-        # Compute max distance to normalize the distance in the utility function
         return max([self.euclidean_distance(self.current_pos, c) for c in self.candidate_locations], default=1)
 
     def estimate_information_gain(self, candidate):
-        # Estimate information gain as the amount of unknown area that will be visible from candidate
-        # Here, we use a placeholder value; in reality, this should calculate how much unexplored space would be seen
         return 1.0  # Placeholder for real information gain calculation
 
     def euclidean_distance(self, p1, p2):
         return math.sqrt((p1.x - p2[0])**2 + (p1.y - p2[1])**2)
 
     def move_to_target(self, target):
-        # Move the robot towards the target using simple proportional control
         angle_to_target = math.atan2(target[1] - self.current_pos.y, target[0] - self.current_pos.x)
         distance = self.euclidean_distance(self.current_pos, target)
+        
+        if distance < TARGET_REACHED_THRESHOLD:
+            # Target reached, stop the robot
+            self.cmd.linear.x = 0.0
+            self.cmd.angular.z = 0.0
+            self.publisher_.publish(self.cmd)
+            return True  # Indicate that target is reached
+
+        # Linear movement towards target
         self.cmd.linear.x = min(distance, LINEAR_VEL)
-        self.cmd.angular.z = 4 * (angle_to_target - 0)  # Proportional control for turning
+        
+        # Angular control to face the target
+        self.cmd.angular.z = TURNING_SPEED * angle_to_target
         self.publisher_.publish(self.cmd)
+        return False  # Target not reached yet
 
     def timer_callback(self):
         if len(self.scan_cleaned) == 0 or self.current_pos is None:
             return
-        # Evaluate candidate locations (frontiers) and move to the best one
-        best_candidate = self.evaluate_candidates()
-        if best_candidate:
-            self.move_to_target(best_candidate)
+
+        if self.target_location is None or self.euclidean_distance(self.current_pos, self.target_location) < TARGET_REACHED_THRESHOLD:
+            # If no target or the target is reached, evaluate new candidate frontiers
+            self.target_location = self.evaluate_candidates()
+
+        if self.target_location:
+            self.move_to_target(self.target_location)
 
         if self.stall:
-            self.cmd.linear.x = -0.1
-            self.cmd.angular.z = 0.5  # Rotate to recover from stall
+            self.cmd.linear.x = -0.1  # Reverse to recover from stall
+            self.cmd.angular.z = 0.5  # Rotate to find a new path
             self.publisher_.publish(self.cmd)
-            self.stall = False
+            self.stall = False  # Reset stall
 
 def main(args=None):
     rclpy.init(args=args)
-    random_walk_node = RandomWalk()
-    rclpy.spin(random_walk_node)
-    random_walk_node.destroy_node()
+    room_explorer_node = RoomExplorer()
+    rclpy.spin(room_explorer_node)
+    room_explorer_node.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':
