@@ -18,6 +18,7 @@ LEFT_SIDE_INDEX = 90
 ALPHA = 0.5  # Weight for utility function (balance between distance and information gain)
 TARGET_REACHED_THRESHOLD = 0.2  # Distance threshold to consider target reached
 TURNING_SPEED = 0.3  # Angular speed when turning toward a target
+MIN_TARGET_DISTANCE = 1.0  # Minimum distance to consider a target
 
 class RoomExplorer(Node):
 
@@ -81,14 +82,23 @@ class RoomExplorer(Node):
     def evaluate_candidates(self):
         best_candidate = None
         best_utility = -float('Inf')
+        
         for candidate in self.candidate_locations:
             dist = self.euclidean_distance(self.current_pos, candidate)
+            
+            # Skip candidates that are too close
+            if dist < MIN_TARGET_DISTANCE:
+                continue
+            
             info_gain = self.estimate_information_gain(candidate)
             utility = ALPHA * (1 - dist / self.max_distance()) + (1 - ALPHA) * info_gain
+            
             if utility > best_utility:
                 best_utility = utility
                 best_candidate = candidate
+                
         return best_candidate
+
 
     def max_distance(self):
         return max([self.euclidean_distance(self.current_pos, c) for c in self.candidate_locations], default=1)
