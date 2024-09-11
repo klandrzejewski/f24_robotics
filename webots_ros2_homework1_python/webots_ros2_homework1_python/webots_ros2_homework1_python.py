@@ -1,16 +1,10 @@
 import rclpy
-# import the ROS2 python libraries
 from rclpy.node import Node
-# import the Twist module from geometry_msgs interface
 from geometry_msgs.msg import Twist
-# import the LaserScan module from sensor_msgs interface
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
-# import Quality of Service library, to set the correct profile and reliability in order to read sensor data.
 from rclpy.qos import ReliabilityPolicy, QoSProfile
 import math
-
-
 
 LINEAR_VEL = 0.22
 STOP_DISTANCE = 0.2
@@ -19,13 +13,13 @@ LIDAR_AVOID_DISTANCE = 0.7
 SAFE_STOP_DISTANCE = STOP_DISTANCE + LIDAR_ERROR
 RIGHT_SIDE_INDEX = 270
 RIGHT_FRONT_INDEX = 210
-LEFT_FRONT_INDEX=150
-LEFT_SIDE_INDEX=90
+LEFT_FRONT_INDEX = 150
+LEFT_SIDE_INDEX = 90
+ALPHA = 0.5  # Weight for utility function (balance between distance and information gain)
 
 class RandomWalk(Node):
 
     def __init__(self):
-        # Initialize the publisher
         super().__init__('random_walk_node')
         self.scan_cleaned = []
         self.stall = False
@@ -43,113 +37,100 @@ class RandomWalk(Node):
             QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
         self.laser_forward = 0
         self.odom_data = 0
-        timer_period = 0.5
-        self.pose_saved=''
+        self.candidate_locations = []  # Store candidate locations (frontiers)
+        self.current_pos = None  # To store current position
+        self.pose_saved = None  # Save last position for stall detection
         self.cmd = Twist()
-        self.timer = self.create_timer(timer_period, self.timer_callback)
-
+        self.timer = self.create_timer(0.5, self.timer_callback)
 
     def listener_callback1(self, msg1):
-        #self.get_logger().info('scan: "%s"' % msg1.ranges)
         scan = msg1.ranges
         self.scan_cleaned = []
-       
-        #self.get_logger().info('scan: "%s"' % scan)
-        # Assume 360 range measurements
         for reading in scan:
             if reading == float('Inf'):
                 self.scan_cleaned.append(3.5)
             elif math.isnan(reading):
                 self.scan_cleaned.append(0.0)
             else:
-            	self.scan_cleaned.append(reading)
-
-
+                self.scan_cleaned.append(reading)
+        self.identify_frontiers()  # Detect frontiers after lidar scan
 
     def listener_callback2(self, msg2):
-        position = msg2.pose.pose.position
-        orientation = msg2.pose.pose.orientation
-        (posx, posy, posz) = (position.x, position.y, position.z)
-        (qx, qy, qz, qw) = (orientation.x, orientation.y, orientation.z, orientation.w)
-        self.get_logger().info('self position: {},{},{}'.format(posx,posy,posz));
-        # similarly for twist message if you need
-        self.pose_saved=position
-        
-        #Example of how to identify a stall..need better tuned position deltas; wheels spin and example fast
-        #diffX = math.fabs(self.pose_saved.x- position.x)
-        #diffY = math.fabs(self.pose_saved.y - position.y)
-        #if (diffX < 0.0001 and diffY < 0.0001):
-           #self.stall = True
-        #else:
-           #self.stall = False
-           
-        return None
-        
+        self.current_pos = msg2.pose.pose.position
+        if self.pose_saved is not None:
+            diffX = math.fabs(self.pose_saved.x - self.current_pos.x)
+            diffY = math.fabs(self.pose_saved.y - self.current_pos.y)
+            if diffX < 0.001 and diffY < 0.001:
+                self.stall = True
+            else:
+                self.stall = False
+        self.pose_saved = self.current_pos  # Save current position for next comparison
+
+    def identify_frontiers(self):
+        # Simple method to identify frontiers (boundaries between known and unknown space)
+        # We'll treat areas with long distances (indicating empty space) as frontiers.
+        self.candidate_locations = []  # Reset frontiers
+        for i in range(len(self.scan_cleaned)):
+            if self.scan_cleaned[i] > SAFE_STOP_DISTANCE:  # Identify frontiers based on safe distance
+                # Assume a simple 2D grid and find the middle points of detected frontiers
+                angle = (i * math.pi / 180.0)  # Convert index to angle
+                x = self.current_pos.x + self.scan_cleaned[i] * math.cos(angle)
+                y = self.current_pos.y + self.scan_cleaned[i] * math.sin(angle)
+                self.candidate_locations.append((x, y))  # Save as a candidate frontier location
+
+    def evaluate_candidates(self):
+        # Use the utility function to score candidate frontiers
+        best_candidate = None
+        best_utility = -float('Inf')
+        for candidate in self.candidate_locations:
+            dist = self.euclidean_distance(self.current_pos, candidate)
+            info_gain = self.estimate_information_gain(candidate)
+            utility = ALPHA * (1 - dist / self.max_distance()) + (1 - ALPHA) * info_gain
+            if utility > best_utility:
+                best_utility = utility
+                best_candidate = candidate
+        return best_candidate
+
+    def max_distance(self):
+        # Compute max distance to normalize the distance in the utility function
+        return max([self.euclidean_distance(self.current_pos, c) for c in self.candidate_locations], default=1)
+
+    def estimate_information_gain(self, candidate):
+        # Estimate information gain as the amount of unknown area that will be visible from candidate
+        # Here, we use a placeholder value; in reality, this should calculate how much unexplored space would be seen
+        return 1.0  # Placeholder for real information gain calculation
+
+    def euclidean_distance(self, p1, p2):
+        return math.sqrt((p1.x - p2[0])**2 + (p1.y - p2[1])**2)
+
+    def move_to_target(self, target):
+        # Move the robot towards the target using simple proportional control
+        angle_to_target = math.atan2(target[1] - self.current_pos.y, target[0] - self.current_pos.x)
+        distance = self.euclidean_distance(self.current_pos, target)
+        self.cmd.linear.x = min(distance, LINEAR_VEL)
+        self.cmd.angular.z = 4 * (angle_to_target - 0)  # Proportional control for turning
+        self.publisher_.publish(self.cmd)
+
     def timer_callback(self):
-        if (len(self.scan_cleaned)==0):
-    	    self.turtlebot_moving = False
-    	    return
-    	    
-        #left_lidar_samples = self.scan_cleaned[LEFT_SIDE_INDEX:LEFT_FRONT_INDEX]
-        #right_lidar_samples = self.scan_cleaned[RIGHT_FRONT_INDEX:RIGHT_SIDE_INDEX]
-        #front_lidar_samples = self.scan_cleaned[LEFT_FRONT_INDEX:RIGHT_FRONT_INDEX]
-        
-        left_lidar_min = min(self.scan_cleaned[LEFT_SIDE_INDEX:LEFT_FRONT_INDEX])
-        right_lidar_min = min(self.scan_cleaned[RIGHT_FRONT_INDEX:RIGHT_SIDE_INDEX])
-        front_lidar_min = min(self.scan_cleaned[LEFT_FRONT_INDEX:RIGHT_FRONT_INDEX])
+        if len(self.scan_cleaned) == 0 or self.current_pos is None:
+            return
+        # Evaluate candidate locations (frontiers) and move to the best one
+        best_candidate = self.evaluate_candidates()
+        if best_candidate:
+            self.move_to_target(best_candidate)
 
-        #self.get_logger().info('left scan slice: "%s"'%  min(left_lidar_samples))
-        #self.get_logger().info('front scan slice: "%s"'%  min(front_lidar_samples))
-        #self.get_logger().info('right scan slice: "%s"'%  min(right_lidar_samples))
-
-        if front_lidar_min < SAFE_STOP_DISTANCE:
-            if self.turtlebot_moving == True:
-                self.cmd.linear.x = 0.0 
-                self.cmd.angular.z = 0.0 
-                self.publisher_.publish(self.cmd)
-                self.turtlebot_moving = False
-                self.get_logger().info('Stopping')
-                return
-        elif front_lidar_min < LIDAR_AVOID_DISTANCE:
-                self.cmd.linear.x = 0.07 
-                if (right_lidar_min > left_lidar_min):
-                   self.cmd.angular.z = -0.3
-                else:
-                   self.cmd.angular.z = 0.3
-                self.publisher_.publish(self.cmd)
-                self.get_logger().info('Turning')
-                self.turtlebot_moving = True
-        else:
-            self.cmd.linear.x = 0.3
-            self.cmd.linear.z = 0.0
+        if self.stall:
+            self.cmd.linear.x = -0.1
+            self.cmd.angular.z = 0.5  # Rotate to recover from stall
             self.publisher_.publish(self.cmd)
-            self.turtlebot_moving = True
-            
-
-        self.get_logger().info('Distance of the obstacle : %f' % front_lidar_min)
-        self.get_logger().info('I receive: "%s"' %
-                               str(self.odom_data))
-        if self.stall == True:
-           self.get_logger().info('Stall reported')
-        
-        # Display the message on the console
-        self.get_logger().info('Publishing: "%s"' % self.cmd)
- 
-
+            self.stall = False
 
 def main(args=None):
-    # initialize the ROS communication
     rclpy.init(args=args)
-    # declare the node constructor
     random_walk_node = RandomWalk()
-    # pause the program execution, waits for a request to kill the node (ctrl+c)
     rclpy.spin(random_walk_node)
-    # Explicity destroy the node
     random_walk_node.destroy_node()
-    # shutdown the ROS communication
     rclpy.shutdown()
-
-
 
 if __name__ == '__main__':
     main()
