@@ -20,10 +20,10 @@ TARGET_REACHED_THRESHOLD = 0.2  # Distance threshold to consider target reached
 TURNING_SPEED = 0.3  # Angular speed when turning toward a target
 MIN_TARGET_DISTANCE = 1.0  # Minimum distance to consider a target
 
-class WallWalker(Node):
+class RoomExplorer(Node):
 
     def __init__(self):
-        super().__init__('wall_walker_node')
+        super().__init__('room_explorer_node')
         self.scan_cleaned = []
         self.target_location = None
         self.stall = False
@@ -133,55 +133,36 @@ class WallWalker(Node):
             self.turtlebot_moving = False
             return
         
-        # Get the minimum distances from the LIDAR on the right, front, and left
         left_lidar_min = min(self.scan_cleaned[LEFT_SIDE_INDEX:LEFT_FRONT_INDEX])
         right_lidar_min = min(self.scan_cleaned[RIGHT_FRONT_INDEX:RIGHT_SIDE_INDEX])
         front_lidar_min = min(self.scan_cleaned[LEFT_FRONT_INDEX:RIGHT_FRONT_INDEX])
 
-        # Wall-following logic
+        if self.target_location is None or self.euclidean_distance(self.current_pos, self.target_location) < TARGET_REACHED_THRESHOLD:
+            # If no target or the target is reached, evaluate new candidate frontiers
+            self.target_location = self.evaluate_candidates()
+
+        if self.target_location:
+            self.move_to_target(self.target_location)
+
         if front_lidar_min < LIDAR_AVOID_DISTANCE:
-            # If there's an obstacle in front, slow down and turn
-            self.cmd.linear.x = 0.07
-            if right_lidar_min > left_lidar_min:
-                self.cmd.angular.z = -0.3  # Turn right
-            else:
-                self.cmd.angular.z = 0.3  # Turn left
-            self.publisher_.publish(self.cmd)
-            self.get_logger().info('Turning to avoid front obstacle')
-            self.turtlebot_moving = True
-        else:
-            # If there's space in front, follow the wall on the right side
-            if right_lidar_min < SAFE_STOP_DISTANCE:
-                # If the robot is too close to the right wall, turn left slightly
-                self.cmd.linear.x = 0.15
-                self.cmd.angular.z = 0.1
-                self.get_logger().info('Too close to wall, adjusting left')
-            elif right_lidar_min > SAFE_STOP_DISTANCE + 0.4:
-                # If the robot is too far from the right wall, turn right slightly
-                self.cmd.linear.x = 0.15
-                self.cmd.angular.z = -0.1
-                self.get_logger().info('Too far from wall, adjusting right')
-            else:
-                # If the distance is optimal, move forward
-                self.cmd.linear.x = LINEAR_VEL
-                self.cmd.angular.z = 0.0
-                self.get_logger().info('Following wall')
-
-            # Publish the movement command
-            self.publisher_.publish(self.cmd)
-            self.turtlebot_moving = True
-
-        # Stall recovery logic
-        if self.stall:
+                self.cmd.linear.x = 0.07 
+                if (right_lidar_min > left_lidar_min):
+                   self.cmd.angular.z = -0.3
+                else:
+                   self.cmd.angular.z = 0.3
+                self.publisher_.publish(self.cmd)
+                self.get_logger().info('Turning')
+                self.turtlebot_moving = True
+        elif self.stall:
             self.cmd.linear.x = -0.3  # Reverse to recover from stall
             self.cmd.angular.z = 0.5  # Rotate to find a new path
             self.publisher_.publish(self.cmd)
-            self.stall = False  # Reset stall flag
-
+            self.get_logger().info('Stalled')
+            self.stall = False  # Reset stall
 
 def main(args=None):
     rclpy.init(args=args)
-    room_explorer_node = WallWalker()
+    room_explorer_node = RoomExplorer()
     rclpy.spin(room_explorer_node)
     room_explorer_node.destroy_node()
     rclpy.shutdown()
