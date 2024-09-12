@@ -9,7 +9,7 @@ import math
 LINEAR_VEL = 0.22
 STOP_DISTANCE = 0.2
 LIDAR_ERROR = 0.05
-LIDAR_AVOID_DISTANCE = 0.5
+LIDAR_AVOID_DISTANCE = 0.7
 SAFE_STOP_DISTANCE = STOP_DISTANCE + LIDAR_ERROR
 RIGHT_SIDE_INDEX = 270
 RIGHT_FRONT_INDEX = 210
@@ -161,6 +161,13 @@ class RoomExplorer(Node):
             self.publisher_.publish(self.cmd)
             self.get_logger().info('Stalled')
             self.stall = False  # Reset stall
+        else:
+            # If the distance is optimal, move forward
+            self.cmd.linear.x = LINEAR_VEL
+            self.cmd.angular.z = 0.0
+            self.get_logger().info('Forward')
+            self.publisher_.publish(self.cmd)
+            self.turtlebot_moving = True
 
 def main(args=None):
     rclpy.init(args=args)
