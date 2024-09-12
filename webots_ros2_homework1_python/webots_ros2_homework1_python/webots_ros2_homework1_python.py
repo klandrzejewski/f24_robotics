@@ -156,7 +156,7 @@ class WallWalker(Node):
                 self.cmd.linear.x = 0.15
                 self.cmd.angular.z = 0.1
                 self.get_logger().info('Too close to wall, adjusting left')
-            elif right_lidar_min > SAFE_STOP_DISTANCE + 0.2:
+            elif right_lidar_min > SAFE_STOP_DISTANCE + 0.4:
                 # If the robot is too far from the right wall, turn right slightly
                 self.cmd.linear.x = 0.15
                 self.cmd.angular.z = -0.1
