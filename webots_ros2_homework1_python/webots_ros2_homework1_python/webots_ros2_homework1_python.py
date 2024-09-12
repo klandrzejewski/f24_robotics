@@ -64,7 +64,7 @@ class RoomExplorer(Node):
         if self.pose_saved is not None:
             diffX = math.fabs(self.pose_saved.x - self.current_pos.x)
             diffY = math.fabs(self.pose_saved.y - self.current_pos.y)
-            if diffX < 0.0005 and diffY < 0.0005:
+            if diffX < 0.0001 and diffY < 0.0001:
                 self.stall = True
                 #self.stall = False
             else:
@@ -146,21 +146,21 @@ class RoomExplorer(Node):
         if self.target_location:
             self.move_to_target(self.target_location)
 
-        if front_lidar_min < LIDAR_AVOID_DISTANCE:
-                self.cmd.linear.x = 0.07 
-                if (right_lidar_min > left_lidar_min):
-                   self.cmd.angular.z = -0.3
-                else:
-                   self.cmd.angular.z = 0.3
-                self.publisher_.publish(self.cmd)
-                self.get_logger().info('Turning')
-                self.turtlebot_moving = True
-        elif self.stall:
+        if self.stall:
             self.cmd.linear.x = -0.3  # Reverse to recover from stall
             self.cmd.angular.z = 0.5  # Rotate to find a new path
             self.publisher_.publish(self.cmd)
             self.get_logger().info('Stalled')
             self.stall = False  # Reset stall
+        elif front_lidar_min < LIDAR_AVOID_DISTANCE:
+            self.cmd.linear.x = 0.07 
+            if (right_lidar_min > left_lidar_min):
+                self.cmd.angular.z = -0.3
+            else:
+                self.cmd.angular.z = 0.3
+                self.publisher_.publish(self.cmd)
+                self.get_logger().info('Turning')
+                self.turtlebot_moving = True
         else:
             # If the distance is optimal, move forward
             self.cmd.linear.x = LINEAR_VEL
