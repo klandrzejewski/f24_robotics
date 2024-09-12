@@ -64,7 +64,7 @@ class RoomExplorer(Node):
         if self.pose_saved is not None:
             diffX = math.fabs(self.pose_saved.x - self.current_pos.x)
             diffY = math.fabs(self.pose_saved.y - self.current_pos.y)
-            if diffX < 0.01 and diffY < 0.01:
+            if diffX < 0.0005 and diffY < 0.0005:
                 self.stall = True
                 #self.stall = False
             else:
