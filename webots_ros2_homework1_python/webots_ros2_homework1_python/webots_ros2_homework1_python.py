@@ -9,7 +9,7 @@ import math
 LINEAR_VEL = 0.22
 STOP_DISTANCE = 0.2
 LIDAR_ERROR = 0.05
-LIDAR_AVOID_DISTANCE = 0.7
+LIDAR_AVOID_DISTANCE = 0.5
 SAFE_STOP_DISTANCE = STOP_DISTANCE + LIDAR_ERROR
 RIGHT_SIDE_INDEX = 270
 RIGHT_FRONT_INDEX = 210
@@ -127,6 +127,7 @@ class RoomExplorer(Node):
         # Angular control to face the target
         self.cmd.angular.z = TURNING_SPEED * angle_to_target
         self.publisher_.publish(self.cmd)
+        self.get_logger().info('Going to target')
         return False  # Target not reached yet
 
     def timer_callback(self):
