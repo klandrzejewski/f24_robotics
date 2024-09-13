@@ -71,10 +71,10 @@ class RoomExplorer(Node):
             diffY = math.fabs(self.pose_saved.y - self.current_pos.y)
             
             # If robot hasn't moved significantly, update the stationary time
-            if diffX < 0.001 and diffY < 0.001:
+            if diffX < 0.01 and diffY < 0.01:
                 current_time = time.time()
                 self.time_stationary += current_time - self.last_move_time
-                self.last_move_time = current_time
+                #self.last_move_time = current_time
             else:
                 # Reset stall timer if the robot has moved
                 self.time_stationary = 0.0
@@ -170,7 +170,7 @@ class RoomExplorer(Node):
             self.move_to_target(self.target_location)
 
         self.get_logger().info(f'Time stationary: {self.time_stationary}')
-        
+
         if self.time_stationary >= STALL_TIME_THRESHOLD:
             self.cmd.linear.x = -0.3  # Reverse to recover from stall
             self.cmd.angular.z = 0.5  # Rotate to find a new path
