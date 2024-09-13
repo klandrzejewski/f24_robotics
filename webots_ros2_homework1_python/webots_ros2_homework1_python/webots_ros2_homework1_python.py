@@ -169,8 +169,8 @@ class RoomExplorer(Node):
         if self.target_location:
             self.move_to_target(self.target_location)
 
-        self.get_logger().info('Time stationary: ')
-        self.get_logger().info(self.time_stationary)
+        self.get_logger().info(f'Time stationary: {self.time_stationary}')
+        
         if self.time_stationary >= STALL_TIME_THRESHOLD:
             self.cmd.linear.x = -0.3  # Reverse to recover from stall
             self.cmd.angular.z = 0.5  # Rotate to find a new path
