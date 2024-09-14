@@ -110,7 +110,7 @@ class WallWalker(Node):
         self.get_logger().info(f'Time stationary: {self.time_stationary}')
 
         if right_lidar_min > SAFE_STOP_DISTANCE + 0.35:
-            self.found_wall == False
+            self.found_wall = False
         
         if self.stall:
             self.cmd.linear.x = -0.5  # Reverse to recover from stall
