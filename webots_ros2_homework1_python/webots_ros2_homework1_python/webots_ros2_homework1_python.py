@@ -87,7 +87,7 @@ class WallWalker(Node):
         self.pose_saved = self.current_pos  # Save current position for next comparison
         
         timer_val = time.time() - self.timer_start # Emergency stall
-        if timer_val >= 7:
+        if timer_val >= 60:
             if self.timer_pos is not None:
                 timerDiffX = math.fabs(self.timer_pos.x - self.current_pos.x)
                 timerDiffY = math.fabs(self.timer_pos.y - self.current_pos.y)
