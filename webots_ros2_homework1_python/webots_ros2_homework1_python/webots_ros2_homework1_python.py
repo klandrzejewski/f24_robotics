@@ -71,7 +71,7 @@ class RoomExplorer(Node):
             diffY = math.fabs(self.pose_saved.y - self.current_pos.y)
             
             # If robot hasn't moved significantly, update the stationary time
-            if diffX < 0.01 and diffY < 0.01:
+            if diffX < 0.001 and diffY < 0.001:
                 current_time = time.time()
                 self.time_stationary += current_time - self.last_move_time
                 #self.last_move_time = current_time
