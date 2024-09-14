@@ -20,7 +20,7 @@ ALPHA = 0.5  # Weight for utility function (balance between distance and informa
 TARGET_REACHED_THRESHOLD = 0.2  # Distance threshold to consider target reached
 TURNING_SPEED = 0.3  # Angular speed when turning toward a target
 MIN_TARGET_DISTANCE = 1.0  # Minimum distance to consider a target
-STALL_TIME_THRESHOLD = 4  # Time in seconds before detecting a stall
+STALL_TIME_THRESHOLD = 5  # Time in seconds before detecting a stall
 
 class WallWalker(Node):
 
@@ -70,7 +70,7 @@ class WallWalker(Node):
             diffY = math.fabs(self.pose_saved.y - self.current_pos.y)
             
             # If robot hasn't moved significantly, update the stationary time
-            if diffX < 0.01 and diffY < 0.01:
+            if diffX < 0.005 and diffY < 0.005:
                 current_time = time.time()
                 self.time_stationary += current_time - self.last_move_time
                 #self.last_move_time = current_time
