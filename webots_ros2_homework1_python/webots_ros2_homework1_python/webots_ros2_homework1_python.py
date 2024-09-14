@@ -157,6 +157,9 @@ class WallWalker(Node):
         # Wall-following logic
         self.get_logger().info(f'Time stationary: {self.time_stationary}')
 
+        if right_lidar_min > SAFE_STOP_DISTANCE + 0.4:
+            self.found_wall == False
+
         if self.recovery:
             self.cmd.linear.x = 0.0 
             if right_lidar_min > left_lidar_min: # Rotate to find a new path
