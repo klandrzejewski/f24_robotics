@@ -70,7 +70,7 @@ class WallWalker(Node):
             diffY = math.fabs(self.pose_saved.y - self.current_pos.y)
             
             # If robot hasn't moved significantly, update the stationary time
-            if diffX < 0.001 and diffY < 0.001:
+            if diffX < 0.01 and diffY < 0.01:
                 current_time = time.time()
                 self.time_stationary += current_time - self.last_move_time
                 #self.last_move_time = current_time
@@ -160,9 +160,6 @@ class WallWalker(Node):
             self.time_stationary = 0.0
             self.last_move_time = time.time()
             self.stall = False  # Reset stall flag
-            
-            # Clear the current target after a stall to force re-evaluation of candidates
-            self.target_location = None
         elif front_lidar_min < LIDAR_AVOID_DISTANCE:
             # If there's an obstacle in front, slow down and turn
             self.cmd.linear.x = 0.07
