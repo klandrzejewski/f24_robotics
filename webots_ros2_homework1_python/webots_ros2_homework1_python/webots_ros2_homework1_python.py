@@ -72,6 +72,8 @@ class WallWalker(Node):
             # If robot hasn't moved significantly, update the stationary time
             if diffX < 0.005 and diffY < 0.005:
                 current_time = time.time()
+                self.get_logger().info(f'Current Time: {current_time}')
+                self.get_logger().info(f'Last Move Time: {self.last_move_time}')
                 self.time_stationary += current_time - self.last_move_time
                 #self.last_move_time = current_time
             else:
