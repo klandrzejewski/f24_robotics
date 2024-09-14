@@ -173,6 +173,11 @@ class WallWalker(Node):
         if right_lidar_min > SAFE_STOP_DISTANCE + 0.3:
             self.found_wall == False
         
+        if self.stall:
+            self.cmd.linear.x = -0.5  # Reverse to recover from stall
+            self.cmd.angular.z = 0.0
+            self.publisher_.publish(self.cmd)
+            self.stall = False
 
         if self.recovery:
             self.cmd.linear.x = 0.0 
@@ -186,13 +191,13 @@ class WallWalker(Node):
             self.last_move_time = time.time()
             self.timer_start = time.time()
         elif self.time_stationary >= STALL_TIME_THRESHOLD:
-            self.cmd.linear.x = -1.0  # Reverse to recover from stall
+            self.cmd.linear.x = -0.5  # Reverse to recover from stall
             self.cmd.angular.z = 0.0
             self.publisher_.publish(self.cmd)
             self.get_logger().info('Stalled, recovering')
             self.time_stationary = 0.0
             self.last_move_time = time.time()
-            self.stall = False  # Reset stall flag
+            self.stall = True  # Reset stall flag
             self.recovery = True # Set recovery flag
         elif front_lidar_min < LIDAR_AVOID_DISTANCE:
             # If there's an obstacle in front, slow down and turn
