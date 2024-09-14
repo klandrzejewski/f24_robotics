@@ -29,6 +29,8 @@ class WallWalker(Node):
         self.scan_cleaned = []
         self.target_location = None
         self.stall = False
+        self.time_stationary = 0.0  # Time spent stationary
+        self.last_move_time = time.time()  # Record the last move time
         self.turtlebot_moving = False
         self.publisher_ = self.create_publisher(Twist, 'cmd_vel', 10)
         self.subscriber1 = self.create_subscription(
