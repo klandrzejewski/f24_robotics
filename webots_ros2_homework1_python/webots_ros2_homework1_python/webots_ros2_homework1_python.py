@@ -30,6 +30,7 @@ class WallWalker(Node):
         self.target_location = None
         self.stall = False
         self.recovery = False
+        self.found_wall = False
         self.time_stationary = 0.0  # Time spent stationary
         self.last_move_time = time.time()  # Record the last move time
         self.turtlebot_moving = False
@@ -178,7 +179,7 @@ class WallWalker(Node):
         elif front_lidar_min < LIDAR_AVOID_DISTANCE:
             # If there's an obstacle in front, slow down and turn
             self.cmd.linear.x = 0.07
-            if right_lidar_min > SAFE_STOP_DISTANCE + 0.1: # Needs new path, but follow wall
+            if right_lidar_min > SAFE_STOP_DISTANCE + 0.3 and self.found_wall == True: # Needs new path, but follow wall
                 self.cmd.angular.z = -0.5  # Turn right
             else:
                 self.cmd.angular.z = 0.5  # Turn left
@@ -192,16 +193,19 @@ class WallWalker(Node):
                 self.cmd.linear.x = 0.10
                 self.cmd.angular.z = 0.1
                 self.get_logger().info('Too close to wall, adjusting left')
+                self.found_wall = True
             elif right_lidar_min > SAFE_STOP_DISTANCE + 0.2:
                 # If the robot is too far from the right wall, turn right slightly
                 self.cmd.linear.x = 0.10
                 self.cmd.angular.z = -0.1
                 self.get_logger().info('Too far from wall, adjusting right')
+                #self.found_wall == False
             else:
                 # If the distance is optimal, move forward
                 self.cmd.linear.x = LINEAR_VEL
                 self.cmd.angular.z = 0.0
                 self.get_logger().info('Following wall')
+                self.found_wall = True
 
             # Publish the movement command
             self.publisher_.publish(self.cmd)
