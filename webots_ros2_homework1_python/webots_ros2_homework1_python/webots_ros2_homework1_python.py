@@ -186,7 +186,7 @@ class WallWalker(Node):
             self.last_move_time = time.time()
             self.timer_start = time.time()
         elif self.time_stationary >= STALL_TIME_THRESHOLD:
-            self.cmd.linear.x = -0.5  # Reverse to recover from stall
+            self.cmd.linear.x = -0.8  # Reverse to recover from stall
             self.cmd.angular.z = 0.0
             self.publisher_.publish(self.cmd)
             self.get_logger().info('Stalled, recovering')
