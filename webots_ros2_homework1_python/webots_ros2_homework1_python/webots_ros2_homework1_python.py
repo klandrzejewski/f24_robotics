@@ -31,6 +31,8 @@ class WallWalker(Node):
         self.stall = False
         self.recovery = False
         self.found_wall = False
+        self.timer_start = time.time()
+        self.timer_pos = None
         self.time_stationary = 0.0  # Time spent stationary
         self.last_move_time = time.time()  # Record the last move time
         self.turtlebot_moving = False
@@ -85,6 +87,17 @@ class WallWalker(Node):
                 self.last_move_time = time.time()
 
         self.pose_saved = self.current_pos  # Save current position for next comparison
+        
+        timer_val = time.time() - self.timer_start # Emergency stall
+        if timer_val >= 7:
+            if self.timer_pos is not None:
+                timerDiffX = math.fabs(self.timer_pos.x - self.current_pos.x)
+                timerDiffY = math.fabs(self.timer_pos.y - self.current_pos.y)
+                if timerDiffX < 0.1 and timerDiffY < 0.1:
+                    self.time_stationary = 6
+            self.timer_pos = self.current_pos
+
+            
 
     def identify_frontiers(self):
         self.candidate_locations = []  # Reset frontiers
@@ -159,6 +172,7 @@ class WallWalker(Node):
 
         if right_lidar_min > SAFE_STOP_DISTANCE + 0.3:
             self.found_wall == False
+        
 
         if self.recovery:
             self.cmd.linear.x = 0.0 
@@ -170,6 +184,7 @@ class WallWalker(Node):
             self.recovery = False
             self.time_stationary = 0.0
             self.last_move_time = time.time()
+            self.timer_start = time.time()
         elif self.time_stationary >= STALL_TIME_THRESHOLD:
             self.cmd.linear.x = -0.5  # Reverse to recover from stall
             self.cmd.angular.z = 0.0
