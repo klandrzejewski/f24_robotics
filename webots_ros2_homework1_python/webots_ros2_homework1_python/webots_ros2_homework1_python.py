@@ -35,6 +35,7 @@ class WallWalker(Node):
         self.timer_pos = None
         self.time_stationary = 0.0  # Time spent stationary
         self.last_move_time = time.time()  # Record the last move time
+        self.time_last_wall = 0.0
         self.turtlebot_moving = False
         self.publisher_ = self.create_publisher(Twist, 'cmd_vel', 10)
         self.subscriber1 = self.create_subscription(
@@ -101,6 +102,8 @@ class WallWalker(Node):
             self.turtlebot_moving = False
             return
         
+        current_time = time.time()
+
         # Get the minimum distances from the LIDAR on the right, front, and left
         left_lidar_min = min(self.scan_cleaned[LEFT_SIDE_INDEX:LEFT_FRONT_INDEX])
         right_lidar_min = min(self.scan_cleaned[RIGHT_FRONT_INDEX:RIGHT_SIDE_INDEX])
@@ -109,7 +112,7 @@ class WallWalker(Node):
         # Wall-following logic
         self.get_logger().info(f'Time stationary: {self.time_stationary}')
 
-        if right_lidar_min > SAFE_STOP_DISTANCE + 0.35:
+        if right_lidar_min > SAFE_STOP_DISTANCE + 0.35 and (current_time - self.time_last_wall > 5.0):
             self.found_wall = False
         
         if self.stall:
@@ -143,6 +146,7 @@ class WallWalker(Node):
             self.cmd.linear.x = 0.07
             if right_lidar_min > SAFE_STOP_DISTANCE + 0.3 and self.found_wall == True: # Needs new path, but follow wall
                 self.cmd.angular.z = -0.5  # Turn right
+                self.time_last_wall = current_time
             else:
                 self.cmd.angular.z = 0.5  # Turn left
             self.publisher_.publish(self.cmd)
@@ -156,6 +160,7 @@ class WallWalker(Node):
                 self.cmd.angular.z = 0.1
                 self.get_logger().info('Too close to wall, adjusting left')
                 self.found_wall = True
+                self.time_last_wall = current_time
             elif right_lidar_min > SAFE_STOP_DISTANCE + 0.2:
                 # If the robot is too far from the right wall, turn right slightly
                 self.cmd.linear.x = 0.10
@@ -168,6 +173,7 @@ class WallWalker(Node):
                 self.cmd.angular.z = 0.0
                 self.get_logger().info('Following wall')
                 self.found_wall = True
+                self.time_last_wall = current_time
 
             # Publish the movement command
             self.publisher_.publish(self.cmd)
