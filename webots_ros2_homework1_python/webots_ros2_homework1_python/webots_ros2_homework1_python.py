@@ -176,6 +176,8 @@ class RoomExplorer(Node):
             self.cmd.angular.z = 0.5  # Rotate to find a new path
             self.publisher_.publish(self.cmd)
             self.get_logger().info('Stalled, recovering')
+            self.time_stationary = 0.0
+            self.last_move_time = time.time()
             self.stall = False  # Reset stall flag
             
             # Clear the current target after a stall to force re-evaluation of candidates
