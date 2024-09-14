@@ -70,7 +70,7 @@ class WallWalker(Node):
             diffY = math.fabs(self.pose_saved.y - self.current_pos.y)
             
             # If robot hasn't moved significantly, update the stationary time
-            if diffX < 0.005 and diffY < 0.005:
+            if diffX < 0.001 and diffY < 0.001:
                 current_time = time.time()
                 #self.get_logger().info(f'Current Time: {current_time}')
                 #self.get_logger().info(f'Last Move Time: {self.last_move_time}')
@@ -155,7 +155,7 @@ class WallWalker(Node):
         self.get_logger().info(f'Time stationary: {self.time_stationary}')
 
         if self.time_stationary >= STALL_TIME_THRESHOLD:
-            self.cmd.linear.x = -0.3  # Reverse to recover from stall
+            self.cmd.linear.x = -0.5  # Reverse to recover from stall
             self.cmd.angular.z = 0.5  # Rotate to find a new path
             self.publisher_.publish(self.cmd)
             self.get_logger().info('Stalled, recovering')
