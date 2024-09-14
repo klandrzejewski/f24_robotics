@@ -5,6 +5,7 @@ from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 from rclpy.qos import ReliabilityPolicy, QoSProfile
 import math
+import time
 
 LINEAR_VEL = 0.22
 STOP_DISTANCE = 0.2
@@ -19,6 +20,8 @@ ALPHA = 0.5  # Weight for utility function (balance between distance and informa
 TARGET_REACHED_THRESHOLD = 0.2  # Distance threshold to consider target reached
 TURNING_SPEED = 0.3  # Angular speed when turning toward a target
 MIN_TARGET_DISTANCE = 1.0  # Minimum distance to consider a target
+STALL_TIME_THRESHOLD = 4  # Time in seconds before detecting a stall
+SENSOR_RANGE = 3.5  # Maximum sensor range for LIDAR
 
 class RoomExplorer(Node):
 
@@ -27,6 +30,8 @@ class RoomExplorer(Node):
         self.scan_cleaned = []
         self.target_location = None
         self.stall = False
+        self.time_stationary = 0.0  # Time spent stationary
+        self.last_move_time = time.time()  # Record the last move time
         self.turtlebot_moving = False
         self.publisher_ = self.create_publisher(Twist, 'cmd_vel', 10)
         self.subscriber1 = self.create_subscription(
@@ -52,7 +57,7 @@ class RoomExplorer(Node):
         self.scan_cleaned = []
         for reading in scan:
             if reading == float('Inf'):
-                self.scan_cleaned.append(3.5)
+                self.scan_cleaned.append(SENSOR_RANGE)
             elif math.isnan(reading):
                 self.scan_cleaned.append(0.0)
             else:
@@ -64,11 +69,17 @@ class RoomExplorer(Node):
         if self.pose_saved is not None:
             diffX = math.fabs(self.pose_saved.x - self.current_pos.x)
             diffY = math.fabs(self.pose_saved.y - self.current_pos.y)
-            if diffX == 0.0000 and diffY == 0.0000:
-                self.stall = True
-                #self.stall = False
+            
+            # If robot hasn't moved significantly, update the stationary time
+            if diffX < 0.001 and diffY < 0.001:
+                current_time = time.time()
+                self.time_stationary += current_time - self.last_move_time
+                #self.last_move_time = current_time
             else:
-                self.stall = False
+                # Reset stall timer if the robot has moved
+                self.time_stationary = 0.0
+                self.last_move_time = time.time()
+
         self.pose_saved = self.current_pos  # Save current position for next comparison
 
     def identify_frontiers(self):
@@ -100,12 +111,24 @@ class RoomExplorer(Node):
                 
         return best_candidate
 
+    def estimate_information_gain(self, candidate):
+        info_gain = 0.0
+        angle_resolution = math.pi / 180.0  # Assume 1-degree resolution
+        
+        # Scan 360 degrees from the candidate point
+        for angle in range(360):
+            x = candidate[0] + SENSOR_RANGE * math.cos(angle * angle_resolution)
+            y = candidate[1] + SENSOR_RANGE * math.sin(angle * angle_resolution)
+            
+            # Use Euclidean distance to check if this point is "unknown" or beyond the current LIDAR scan
+            dist = self.euclidean_distance(self.current_pos, (x, y))
+            if dist >= SENSOR_RANGE:
+                info_gain += 1.0  # Increase info gain for each "unexplored" point
+
+        return info_gain
 
     def max_distance(self):
         return max([self.euclidean_distance(self.current_pos, c) for c in self.candidate_locations], default=1)
-
-    def estimate_information_gain(self, candidate):
-        return 1.0  # Placeholder for real information gain calculation
 
     def euclidean_distance(self, p1, p2):
         return math.sqrt((p1.x - p2[0])**2 + (p1.y - p2[1])**2)
@@ -146,21 +169,28 @@ class RoomExplorer(Node):
         if self.target_location:
             self.move_to_target(self.target_location)
 
-        if front_lidar_min < LIDAR_AVOID_DISTANCE:
+        self.get_logger().info(f'Time stationary: {self.time_stationary}')
+
+        if self.time_stationary >= STALL_TIME_THRESHOLD:
+            self.cmd.linear.x = -0.3  # Reverse to recover from stall
+            self.cmd.angular.z = 0.5  # Rotate to find a new path
+            self.publisher_.publish(self.cmd)
+            self.get_logger().info('Stalled, recovering')
+            self.time_stationary = 0.0
+            self.last_move_time = time.time()
+            self.stall = False  # Reset stall flag
+            
+            # Clear the current target after a stall to force re-evaluation of candidates
+            self.target_location = None
+        elif front_lidar_min < LIDAR_AVOID_DISTANCE:
             self.cmd.linear.x = 0.07 
             if (right_lidar_min > left_lidar_min):
                 self.cmd.angular.z = -0.3
             else:
                 self.cmd.angular.z = 0.3
-                self.publisher_.publish(self.cmd)
-                self.get_logger().info('Turning')
-                self.turtlebot_moving = True
-        elif self.stall:
-            self.cmd.linear.x = -0.3  # Reverse to recover from stall
-            self.cmd.angular.z = 0.5  # Rotate to find a new path
             self.publisher_.publish(self.cmd)
-            self.get_logger().info('Stalled')
-            self.stall = False  # Reset stall
+            self.get_logger().info('Turning to avoid')
+            self.turtlebot_moving = True
         else:
             # If the distance is optimal, move forward
             self.cmd.linear.x = LINEAR_VEL
