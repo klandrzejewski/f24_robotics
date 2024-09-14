@@ -66,12 +66,12 @@ class WallWalker(Node):
     def listener_callback2(self, msg2):
         self.current_pos = msg2.pose.pose.position
         if self.pose_saved is not None:
-            self.get_logger().info(f'X: {self.current_pos.x} Y: {self.current_pos.y}')
+            #self.get_logger().info(f'X: {self.current_pos.x} Y: {self.current_pos.y}')
             diffX = math.fabs(self.pose_saved.x - self.current_pos.x)
             diffY = math.fabs(self.pose_saved.y - self.current_pos.y)
             
             # If robot hasn't moved significantly, update the stationary time
-            if diffX < 0.001 and diffY < 0.001:
+            if diffX < 0.004 and diffY < 0.004:
                 current_time = time.time()
                 #self.get_logger().info(f'Current Time: {current_time}')
                 #self.get_logger().info(f'Last Move Time: {self.last_move_time}')
