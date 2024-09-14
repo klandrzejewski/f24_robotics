@@ -177,16 +177,16 @@ class WallWalker(Node):
         if self.recovery:
             self.cmd.linear.x = 0.0 
             if right_lidar_min > left_lidar_min: # Rotate to find a new path
-                self.cmd.angular.z = -0.5  # Turn right
+                self.cmd.angular.z = -0.8  # Turn right
             else:
-                self.cmd.angular.z = 0.5  # Turn left
+                self.cmd.angular.z = 0.8  # Turn left
             self.publisher_.publish(self.cmd)
             self.recovery = False
             self.time_stationary = 0.0
             self.last_move_time = time.time()
             self.timer_start = time.time()
         elif self.time_stationary >= STALL_TIME_THRESHOLD:
-            self.cmd.linear.x = -0.8  # Reverse to recover from stall
+            self.cmd.linear.x = -1.0  # Reverse to recover from stall
             self.cmd.angular.z = 0.0
             self.publisher_.publish(self.cmd)
             self.get_logger().info('Stalled, recovering')
