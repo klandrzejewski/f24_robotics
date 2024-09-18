@@ -6,6 +6,7 @@ from nav_msgs.msg import Odometry
 from rclpy.qos import ReliabilityPolicy, QoSProfile
 import math
 import time
+import csv
 
 LINEAR_VEL = 0.22
 STOP_DISTANCE = 0.2
@@ -54,6 +55,7 @@ class WallWalker(Node):
         self.pose_saved = None  # Save last position for stall detection
         self.cmd = Twist()
         self.timer = self.create_timer(0.5, self.timer_callback)
+        self.positions = []  # To store positions for the trials
 
     def listener_callback1(self, msg1):
         scan = msg1.ranges
@@ -97,6 +99,23 @@ class WallWalker(Node):
             self.timer_pos = self.current_pos
 
 
+    def log_position(self, position, orientation):
+        # Log x, y, and orientation (convert quaternion to yaw angle)
+        euler_angles = self.quaternion_to_euler(orientation)
+        theta = euler_angles[2]  # Yaw
+        self.positions.append([position.x, position.y, theta])
+    
+    def quaternion_to_euler(self, orientation):
+        q = orientation # Convert to Euler angles (roll, pitch, yaw)
+        yaw = math.atan2(2.0*(q.w*q.z + q.x*q.y), 1.0 - 2.0*(q.y*q.y + q.z*q.z))
+        return [0, 0, yaw]  # Return only yaw
+
+    def save_positions_to_csv(self, filename):
+        with open(filename, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['x', 'y', 'theta'])  # Header
+            writer.writerows(self.positions)
+
     def timer_callback(self):
         if len(self.scan_cleaned) == 0 or self.current_pos is None:
             self.turtlebot_moving = False
@@ -115,11 +134,11 @@ class WallWalker(Node):
         if right_lidar_min > SAFE_STOP_DISTANCE + 0.35 and (current_time - self.time_last_wall > 5.0):
             self.found_wall = False
         
-        if self.stall:
-            self.cmd.linear.x = -0.5  # Reverse to recover from stall
-            self.cmd.angular.z = 0.0
-            self.publisher_.publish(self.cmd)
-            self.stall = False
+        # if self.stall:
+        #     self.cmd.linear.x = -0.5  # Reverse to recover from stall
+        #     self.cmd.angular.z = 0.0
+        #     self.publisher_.publish(self.cmd)
+        #     self.stall = False
 
         if self.recovery:
             self.cmd.linear.x = 0.0 
@@ -139,7 +158,7 @@ class WallWalker(Node):
             self.get_logger().info('Stalled, recovering')
             self.time_stationary = 0.0
             self.last_move_time = time.time()
-            self.stall = True  # Reset stall flag
+            #self.stall = True  # Reset stall flag
             self.recovery = True # Set recovery flag
         elif front_lidar_min < LIDAR_AVOID_DISTANCE:
             # If there's an obstacle in front, slow down and turn
