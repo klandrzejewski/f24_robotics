@@ -70,7 +70,7 @@ class WallWalker(Node):
 
     def listener_callback2(self, msg2):
         self.current_pos = msg2.pose.pose.position
-        self.current_orientation = msg2.pose.pose.oriention
+        self.current_orientation = msg2.pose.pose.orientation
         if self.pose_saved is not None:
             #self.get_logger().info(f'X: {self.current_pos.x} Y: {self.current_pos.y}')
             diffX = math.fabs(self.pose_saved.x - self.current_pos.x)
