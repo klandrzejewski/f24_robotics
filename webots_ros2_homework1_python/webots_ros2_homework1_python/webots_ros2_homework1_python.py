@@ -104,6 +104,7 @@ class WallWalker(Node):
         euler_angles = self.quaternion_to_euler(orientation)
         theta = euler_angles[2]  # Yaw
         self.positions.append([position.x, position.y, theta])
+        self.save_positions_to_csv(self, 'position1_trial1')
     
     def quaternion_to_euler(self, orientation):
         q = orientation # Convert to Euler angles (roll, pitch, yaw)
