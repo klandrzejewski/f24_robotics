@@ -56,6 +56,7 @@ class WallWalker(Node):
         self.cmd = Twist()
         self.timer = self.create_timer(0.5, self.timer_callback)
         self.positions = []  # To store positions for the trials
+        self.save_positions_to_csv('position1_trial1')
 
     def listener_callback1(self, msg1):
         scan = msg1.ranges
@@ -99,26 +100,30 @@ class WallWalker(Node):
                     self.time_stationary = 6
             self.timer_pos = self.current_pos
 
-        self.log_position(self.current_pos, self.current_orientation)
+    #     self.log_position(self.current_pos, self.current_orientation)
 
 
-    def log_position(self, position, orientation):
-        # Log x, y, and orientation (convert quaternion to yaw angle)
-        euler_angles = self.quaternion_to_euler(orientation)
-        theta = euler_angles[2]  # Yaw
-        self.positions.append([position.x, position.y, theta])
-        self.save_positions_to_csv('position1_trial1')
+    # def log_position(self, position, orientation):
+    #     # Log x, y, and orientation (convert quaternion to yaw angle)
+    #     euler_angles = self.quaternion_to_euler(orientation)
+    #     theta = euler_angles[2]  # Yaw
+    #     self.positions.append([position.x, position.y, theta])
     
-    def quaternion_to_euler(self, orientation):
-        q = orientation # Convert to Euler angles (roll, pitch, yaw)
-        yaw = math.atan2(2.0*(q.w*q.z + q.x*q.y), 1.0 - 2.0*(q.y*q.y + q.z*q.z))
-        return [0, 0, yaw]  # Return only yaw
+    # def quaternion_to_euler(self, orientation):
+    #     q = orientation # Convert to Euler angles (roll, pitch, yaw)
+    #     yaw = math.atan2(2.0*(q.w*q.z + q.x*q.y), 1.0 - 2.0*(q.y*q.y + q.z*q.z))
+    #     return [0, 0, yaw]  # Return only yaw
 
-    def save_positions_to_csv(self, filename):
-        with open(filename, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['x', 'y', 'theta'])  # Header
-            writer.writerows(self.positions)
+    # def save_positions_to_csv(self, filename):
+    #     with open(filename, 'w', newline='') as f:
+    #         writer = csv.writer(f)
+    #         writer.writerow(['x', 'y', 'theta'])  # Header
+    #         #writer.writerows(self.positions)
+    # with open('poses.txt', 'w') as file:
+            
+    #         for key, value in self.poses_dict.iteritems():
+    #             if value:
+    #                 file.write(str(key) + ':\n----------\n' + str(value) + '\n===========\n')
 
     def timer_callback(self):
         if len(self.scan_cleaned) == 0 or self.current_pos is None:
@@ -133,7 +138,8 @@ class WallWalker(Node):
         front_lidar_min = min(self.scan_cleaned[LEFT_FRONT_INDEX:RIGHT_FRONT_INDEX])
         
         # Wall-following logic
-        self.get_logger().info(f'Time stationary: {self.time_stationary}')
+        #self.get_logger().info(f'Time stationary: {self.time_stationary}')
+        self.get_logger().info(f'Position: {self.current_pos}, Orientation: {self.current_orientation}')
 
         if right_lidar_min > SAFE_STOP_DISTANCE + 0.35 and (current_time - self.time_last_wall > 5.0):
             self.found_wall = False
@@ -158,7 +164,7 @@ class WallWalker(Node):
             self.cmd.linear.x = -0.5  # Reverse to recover from stall
             self.cmd.angular.z = 0.0
             self.publisher_.publish(self.cmd)
-            self.get_logger().info('Stalled, recovering')
+            #self.get_logger().info('Stalled, recovering')
             self.time_stationary = 0.0
             self.last_move_time = time.time()
             self.stall = True  # Reset stall flag
@@ -172,7 +178,7 @@ class WallWalker(Node):
             else:
                 self.cmd.angular.z = 0.5  # Turn left
             self.publisher_.publish(self.cmd)
-            self.get_logger().info('Turning to avoid front obstacle')
+            #self.get_logger().info('Turning to avoid front obstacle')
             self.turtlebot_moving = True
         else:
             # If there's space in front, follow the wall on the right side
@@ -180,20 +186,20 @@ class WallWalker(Node):
                 # If the robot is too close to the right wall, turn left slightly
                 self.cmd.linear.x = 0.10
                 self.cmd.angular.z = 0.1
-                self.get_logger().info('Too close to wall, adjusting left')
+                #self.get_logger().info('Too close to wall, adjusting left')
                 self.found_wall = True
                 self.time_last_wall = current_time
             elif right_lidar_min > SAFE_STOP_DISTANCE + 0.2:
                 # If the robot is too far from the right wall, turn right slightly
                 self.cmd.linear.x = 0.10
                 self.cmd.angular.z = -0.15
-                self.get_logger().info('Too far from wall, adjusting right')
+                #self.get_logger().info('Too far from wall, adjusting right')
                 #self.found_wall == False
             else:
                 # If the distance is optimal, move forward
                 self.cmd.linear.x = LINEAR_VEL
                 self.cmd.angular.z = 0.0
-                self.get_logger().info('Following wall')
+                #self.get_logger().info('Following wall')
                 self.found_wall = True
                 self.time_last_wall = current_time
 
