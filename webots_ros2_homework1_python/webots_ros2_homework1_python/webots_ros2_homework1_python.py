@@ -8,7 +8,7 @@ import math
 import time
 import csv
 
-LINEAR_VEL = 0.18
+LINEAR_VEL = 0.15
 STOP_DISTANCE = 0.2
 LIDAR_ERROR = 0.05
 LIDAR_AVOID_DISTANCE = 0.7
