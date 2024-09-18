@@ -56,7 +56,7 @@ class WallWalker(Node):
         self.cmd = Twist()
         self.timer = self.create_timer(0.5, self.timer_callback)
         self.positions = []  # To store positions for the trials
-        self.save_positions_to_csv('position1_trial1')
+        #self.save_positions_to_csv('position1_trial1')
 
     def listener_callback1(self, msg1):
         scan = msg1.ranges
