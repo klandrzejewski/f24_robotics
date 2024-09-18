@@ -138,8 +138,8 @@ class WallWalker(Node):
         front_lidar_min = min(self.scan_cleaned[LEFT_FRONT_INDEX:RIGHT_FRONT_INDEX])
         
         # Wall-following logic
-        #self.get_logger().info(f'Time stationary: {self.time_stationary}')
-        self.get_logger().info(f'Position: {self.current_pos}, Orientation: {self.current_orientation}')
+        #self.get_logger().info(f'Time stationary: {self.time_stationary} , Orientation: {self.current_orientation}')
+        self.get_logger().info(f'Position: {self.current_pos}')
 
         if right_lidar_min > SAFE_STOP_DISTANCE + 0.35 and (current_time - self.time_last_wall > 5.0):
             self.found_wall = False
