@@ -17,11 +17,7 @@ RIGHT_SIDE_INDEX = 270
 RIGHT_FRONT_INDEX = 210
 LEFT_FRONT_INDEX = 150
 LEFT_SIDE_INDEX = 90
-ALPHA = 0.5  # Weight for utility function (balance between distance and information gain)
-TARGET_REACHED_THRESHOLD = 0.2  # Distance threshold to consider target reached
-TURNING_SPEED = 0.3  # Angular speed when turning toward a target
-MIN_TARGET_DISTANCE = 1.0  # Minimum distance to consider a target
-STALL_TIME_THRESHOLD = 5  # Time in seconds before detecting a stall
+STALL_TIME_THRESHOLD = 5  # Amount of seconds before detecting a stall
 
 class WallWalker(Node):
 
@@ -32,11 +28,11 @@ class WallWalker(Node):
         self.stall = False
         self.recovery = False
         self.found_wall = False
-        self.timer_start = time.time()
+        self.timer_start = time.time() # Start the timer
         self.timer_pos = None
         self.time_stationary = 0.0  # Time spent stationary
         self.last_move_time = time.time()  # Record the last move time
-        self.time_last_wall = 0.0
+        self.time_last_wall = 0.0 # Time since last found wall
         self.turtlebot_moving = False
         self.publisher_ = self.create_publisher(Twist, 'cmd_vel', 10)
         self.subscriber1 = self.create_subscription(
@@ -55,8 +51,6 @@ class WallWalker(Node):
         self.pose_saved = None  # Save last position for stall detection
         self.cmd = Twist()
         self.timer = self.create_timer(0.5, self.timer_callback)
-        self.positions = []  # To store positions for the trials
-        #self.save_positions_to_csv('position1_trial1')
 
     def listener_callback1(self, msg1):
         scan = msg1.ranges
@@ -72,16 +66,15 @@ class WallWalker(Node):
     def listener_callback2(self, msg2):
         self.current_pos = msg2.pose.pose.position
         self.current_orientation = msg2.pose.pose.orientation
+
+        # Check for stall
         if self.pose_saved is not None:
-            #self.get_logger().info(f'X: {self.current_pos.x} Y: {self.current_pos.y}')
             diffX = math.fabs(self.pose_saved.x - self.current_pos.x)
             diffY = math.fabs(self.pose_saved.y - self.current_pos.y)
             
-            # If robot hasn't moved significantly, update the stationary time
+            # Update stationary time if robot has not moved significantly 
             if diffX < 0.00125 and diffY < 0.00125:
                 current_time = time.time()
-                #self.get_logger().info(f'Current Time: {current_time}')
-                #self.get_logger().info(f'Last Move Time: {self.last_move_time}')
                 self.time_stationary = current_time - self.last_move_time
                 #self.last_move_time = current_time
             else:
@@ -100,31 +93,6 @@ class WallWalker(Node):
                     self.time_stationary = 6
             self.timer_pos = self.current_pos
 
-    #     self.log_position(self.current_pos, self.current_orientation)
-
-
-    # def log_position(self, position, orientation):
-    #     # Log x, y, and orientation (convert quaternion to yaw angle)
-    #     euler_angles = self.quaternion_to_euler(orientation)
-    #     theta = euler_angles[2]  # Yaw
-    #     self.positions.append([position.x, position.y, theta])
-    
-    # def quaternion_to_euler(self, orientation):
-    #     q = orientation # Convert to Euler angles (roll, pitch, yaw)
-    #     yaw = math.atan2(2.0*(q.w*q.z + q.x*q.y), 1.0 - 2.0*(q.y*q.y + q.z*q.z))
-    #     return [0, 0, yaw]  # Return only yaw
-
-    # def save_positions_to_csv(self, filename):
-    #     with open(filename, 'w', newline='') as f:
-    #         writer = csv.writer(f)
-    #         writer.writerow(['x', 'y', 'theta'])  # Header
-    #         #writer.writerows(self.positions)
-    # with open('poses.txt', 'w') as file:
-            
-    #         for key, value in self.poses_dict.iteritems():
-    #             if value:
-    #                 file.write(str(key) + ':\n----------\n' + str(value) + '\n===========\n')
-
     def timer_callback(self):
         if len(self.scan_cleaned) == 0 or self.current_pos is None:
             self.turtlebot_moving = False
@@ -132,18 +100,21 @@ class WallWalker(Node):
         
         current_time = time.time()
 
-        # Get the minimum distances from the LIDAR on the right, front, and left
+        # Get lidar readings
         left_lidar_min = min(self.scan_cleaned[LEFT_SIDE_INDEX:LEFT_FRONT_INDEX])
         right_lidar_min = min(self.scan_cleaned[RIGHT_FRONT_INDEX:RIGHT_SIDE_INDEX])
         front_lidar_min = min(self.scan_cleaned[LEFT_FRONT_INDEX:RIGHT_FRONT_INDEX])
         
         # Wall-following logic
-        #self.get_logger().info(f'Time stationary: {self.time_stationary} , Orientation: {self.current_orientation}')
-        self.get_logger().info(f'Position: {self.current_pos}')
+        
+        # Output position for logging
+        # self.get_logger().info(f'Position: {self.current_pos}')
 
+        # Check if it has found the wall recently
         if right_lidar_min > SAFE_STOP_DISTANCE + 0.35 and (current_time - self.time_last_wall > 5.0):
             self.found_wall = False
         
+        # Check robot status
         if self.stall:
             self.cmd.linear.x = -0.5  # Reverse to recover from stall
             self.cmd.angular.z = 0.0
@@ -164,42 +135,42 @@ class WallWalker(Node):
             self.cmd.linear.x = -0.5  # Reverse to recover from stall
             self.cmd.angular.z = 0.0
             self.publisher_.publish(self.cmd)
-            #self.get_logger().info('Stalled, recovering')
+            self.get_logger().info('Stalled, recovering')
             self.time_stationary = 0.0
             self.last_move_time = time.time()
             self.stall = True  # Reset stall flag
             self.recovery = True # Set recovery flag
         elif front_lidar_min < LIDAR_AVOID_DISTANCE:
-            # If there's an obstacle in front, slow down and turn
+            # Obstacle in front: slow down and turn
             self.cmd.linear.x = 0.07
-            if right_lidar_min > SAFE_STOP_DISTANCE + 0.3 and self.found_wall == True: # Needs new path, but follow wall
+            if right_lidar_min > SAFE_STOP_DISTANCE + 0.3 and self.found_wall == True: # Needs to turn, but follow the wall
                 self.cmd.angular.z = -0.5  # Turn right
                 self.time_last_wall = current_time
             else:
                 self.cmd.angular.z = 0.5  # Turn left
             self.publisher_.publish(self.cmd)
-            #self.get_logger().info('Turning to avoid front obstacle')
+            self.get_logger().info('Turning to avoid front obstacle')
             self.turtlebot_moving = True
         else:
-            # If there's space in front, follow the wall on the right side
+            # Space in front, follow the wall on the right side
             if right_lidar_min < SAFE_STOP_DISTANCE:
-                # If the robot is too close to the right wall, turn left slightly
+                # Robot is too close to the right wall, turn left slightly
                 self.cmd.linear.x = 0.10
                 self.cmd.angular.z = 0.1
-                #self.get_logger().info('Too close to wall, adjusting left')
+                self.get_logger().info('Too close to wall, adjusting left')
                 self.found_wall = True
                 self.time_last_wall = current_time
             elif right_lidar_min > SAFE_STOP_DISTANCE + 0.2:
-                # If the robot is too far from the right wall, turn right slightly
+                # Robot is too far from the right wall, turn right slightly
                 self.cmd.linear.x = 0.10
                 self.cmd.angular.z = -0.18
-                #self.get_logger().info('Too far from wall, adjusting right')
+                self.get_logger().info('Too far from wall, adjusting right')
                 #self.found_wall == False
             else:
-                # If the distance is optimal, move forward
+                # Distance is optimal, move forward
                 self.cmd.linear.x = LINEAR_VEL
                 self.cmd.angular.z = 0.0
-                #self.get_logger().info('Following wall')
+                self.get_logger().info('Following wall')
                 self.found_wall = True
                 self.time_last_wall = current_time
 
