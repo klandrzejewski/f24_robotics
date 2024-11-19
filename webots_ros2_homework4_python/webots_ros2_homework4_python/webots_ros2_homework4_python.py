@@ -8,7 +8,7 @@ import math
 import time
 import csv
 
-LINEAR_VEL = 0.22
+LINEAR_VEL = 0.14
 STOP_DISTANCE = 0.2
 LIDAR_ERROR = 0.05
 LIDAR_AVOID_DISTANCE = 0.7
@@ -33,6 +33,9 @@ class WallWalker(Node):
         self.time_stationary = 0.0  # Time spent stationary
         self.last_move_time = time.time()  # Record the last move time
         self.time_last_wall = 0.0 # Time since last found wall
+        self.rotateTime = time.time()
+        self.rotate = False
+        self.start = True
         self.turtlebot_moving = False
         self.publisher_ = self.create_publisher(Twist, 'cmd_vel', 10)
         self.subscriber1 = self.create_subscription(
@@ -89,8 +92,8 @@ class WallWalker(Node):
             if self.timer_pos is not None:
                 timerDiffX = math.fabs(self.timer_pos.x - self.current_pos.x)
                 timerDiffY = math.fabs(self.timer_pos.y - self.current_pos.y)
-                if timerDiffX < 0.01 and timerDiffY < 0.01:
-                    self.time_stationary = 6
+                #if timerDiffX < 0.01 and timerDiffY < 0.01:
+                    #self.time_stationary = 6
             self.timer_pos = self.current_pos
 
     def timer_callback(self):
@@ -116,54 +119,76 @@ class WallWalker(Node):
             self.found_wall = False
         
         # Check robot status
-        if self.stall:
-            self.cmd.linear.x = -0.5  # Reverse to recover from stall
-            self.cmd.angular.z = 0.0
-            self.publisher_.publish(self.cmd)
-            self.stall = False
-        elif self.recovery:
-            self.cmd.linear.x = 0.0 
-            if right_lidar_min > left_lidar_min: # Rotate to find a new path
-                self.cmd.angular.z = -0.8  # Turn right
-            else:
-                self.cmd.angular.z = 0.8  # Turn left
-            self.publisher_.publish(self.cmd)
-            self.recovery = False
-            self.time_stationary = 0.0
-            self.last_move_time = time.time()
-            self.timer_start = time.time()
-        elif self.time_stationary >= STALL_TIME_THRESHOLD:
-            self.cmd.linear.x = -0.5  # Reverse to recover from stall
-            self.cmd.angular.z = 0.0
-            self.publisher_.publish(self.cmd)
-            self.get_logger().info('Stalled, recovering')
-            self.time_stationary = 0.0
-            self.last_move_time = time.time()
-            self.stall = True  # Reset stall flag
-            self.recovery = True # Set recovery flag
-        elif front_lidar_min < LIDAR_AVOID_DISTANCE:
+        # Comment out stall recovery
+        # if self.stall:
+        #     self.cmd.linear.x = -0.5  # Reverse to recover from stall
+        #     self.cmd.angular.z = 0.0
+        #     self.publisher_.publish(self.cmd)
+        #     self.stall = False
+        # elif self.recovery:
+        #     self.cmd.linear.x = 0.0 
+        #     if right_lidar_min > left_lidar_min: # Rotate to find a new path
+        #         self.cmd.angular.z = -0.8  # Turn right
+        #     else:
+        #         self.cmd.angular.z = 0.8  # Turn left
+        #     self.publisher_.publish(self.cmd)
+        #     self.recovery = False
+        #     self.time_stationary = 0.0
+        #     self.last_move_time = time.time()
+        #     self.timer_start = time.time()
+        # elif self.time_stationary >= STALL_TIME_THRESHOLD:
+        #     self.cmd.linear.x = -0.5  # Reverse to recover from stall
+        #     self.cmd.angular.z = 0.0
+        #     self.publisher_.publish(self.cmd)
+        #     self.get_logger().info('Stalled, recovering')
+        #     self.time_stationary = 0.0
+        #     self.last_move_time = time.time()
+        #     self.stall = True  # Reset stall flag
+        #     self.recovery = True # Set recovery flag
+        if front_lidar_min < LIDAR_AVOID_DISTANCE and self.rotate == False:
             # Obstacle in front: slow down and turn
             self.cmd.linear.x = 0.07
-            if right_lidar_min > SAFE_STOP_DISTANCE + 0.3 and self.found_wall == True: # Needs to turn, but follow the wall
+            if right_lidar_min > SAFE_STOP_DISTANCE + 0.3 and self.found_wall == True and self.start == False: # Needs to turn, but follow the wall
                 self.cmd.angular.z = -0.5  # Turn right
                 self.time_last_wall = current_time
             else:
                 self.cmd.angular.z = 0.5  # Turn left
+                if self.start == True:
+                    self.rotateTime = current_time
+                    self.found_wall = False
+                self.start = False
             self.publisher_.publish(self.cmd)
             self.get_logger().info('Turning to avoid front obstacle')
             self.turtlebot_moving = True
-        else:
+        elif self.rotate and self.rotateTime < current_time - 8:
+            # Rotate back from looking for tags
+            self.cmd.linear.x = 0.0  
+            self.cmd.angular.z = 1.0  # Turn left away from wall
+            self.publisher_.publish(self.cmd)
+            if self.rotateTime < current_time - 10:
+                self.rotate = False
+                self.rotateTime = time.time()
+            self.get_logger().info('Looking for tags')
+        elif self.rotateTime < current_time - 5 and (self.found_wall or right_lidar_min < SAFE_STOP_DISTANCE + 0.5) and not self.start:
+            # Start looking for april tags
+            self.cmd.linear.x = 0.0  
+            self.cmd.angular.z = -1.0  # Turn right towards wall
+            self.publisher_.publish(self.cmd)
+            self.get_logger().info('Looking for tags')
+            self.rotate = True
+        elif self.rotate == False:
             # Space in front, follow the wall on the right side
             if right_lidar_min < SAFE_STOP_DISTANCE:
                 # Robot is too close to the right wall, turn left slightly
-                self.cmd.linear.x = 0.10
+                self.start = False
+                self.cmd.linear.x = 0.14
                 self.cmd.angular.z = 0.1
                 self.get_logger().info('Too close to wall, adjusting left')
                 self.found_wall = True
                 self.time_last_wall = current_time
-            elif right_lidar_min > SAFE_STOP_DISTANCE + 0.2:
+            elif (right_lidar_min > SAFE_STOP_DISTANCE + 0.2 and not self.start) or (right_lidar_min < SAFE_STOP_DISTANCE + 0.5 and self.start):
                 # Robot is too far from the right wall, turn right slightly
-                self.cmd.linear.x = 0.10
+                self.cmd.linear.x = 0.14
                 self.cmd.angular.z = -0.18
                 self.get_logger().info('Too far from wall, adjusting right')
                 #self.found_wall == False
