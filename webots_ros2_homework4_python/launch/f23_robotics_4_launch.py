@@ -17,18 +17,15 @@
 """Launch Webots TurtleBot3 Burger driver."""
 
 import os
-from launch.substitutions import LaunchConfiguration
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions.path_join_substitution import PathJoinSubstitution
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, RegisterEventHandler
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
-import launch
-from ament_index_python.packages import get_package_share_directory, get_packages_with_prefixes
-from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.actions import IncludeLaunchDescription
+from launch.event_handlers import OnProcessExit
 from webots_ros2_driver.webots_launcher import WebotsLauncher
 from webots_ros2_driver.webots_controller import WebotsController
 from webots_ros2_driver.wait_for_controller_connection import WaitForControllerConnection
+from ament_index_python.packages import get_package_share_directory
 
 
 def generate_launch_description():
@@ -39,7 +36,6 @@ def generate_launch_description():
 
     webots = WebotsLauncher(
         world=PathJoinSubstitution([package_dir, 'worlds', world]),
-        #mode=mode,
         ros2_supervisor=True
     )
 
@@ -59,7 +55,6 @@ def generate_launch_description():
         arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'base_footprint'],
     )
 
-    # ROS control spawners
     controller_manager_timeout = ['--controller-manager-timeout', '50']
     controller_manager_prefix = 'python.exe' if os.name == 'nt' else ''
     diffdrive_controller_spawner = Node(
@@ -93,18 +88,55 @@ def generate_launch_description():
         respawn=True
     )
 
-    # Wait for the simulation to be ready to start controllers
     waiting_nodes = WaitForControllerConnection(
         target_driver=turtlebot_driver,
-        nodes_to_start= ros_control_spawners
+        nodes_to_start=ros_control_spawners
     )
 
+    # Camera node
+    camera_node = Node(
+        package='v4l2_camera',
+        executable='v4l2_camera_node',
+        output='screen'
+    )
 
+    # AprilTag detection node
+    apriltag_node = Node(
+        package='apriltag_ros',
+        executable='apriltag_node',
+        output='screen',
+        remappings=[
+            ('image_rect', '/image_raw'),
+            ('camera_info', '/camera_info')
+        ],
+        parameters=[os.path.join(get_package_share_directory('apriltag_ros'), 'cfg', 'tags_36h11.yaml')]
+    )
+
+    # RQT Image View node
+    rqt_image_view_node = Node(
+        package='rqt_image_view',
+        executable='rqt_image_view',
+        output='screen'
+    )
+
+    # Echo detections topic
+    detection_echo = ExecuteProcess(
+        cmd=['ros2', 'topic', 'echo', '/detections'],
+        output='screen'
+    )
+
+    image_color_echo = ExecuteProcess(
+        cmd=['ros2', 'topic', 'echo', '/TurtleBot3Burger/camera/image_color'],
+        output='screen'
+    )
+
+    rviz_config_dir = os.path.join(get_package_share_directory('webots_apriltags'),
+                                   'rviz', 'turtlebot3_apriltags.rviz')
 
     return LaunchDescription([
         DeclareLaunchArgument(
             'world',
-            default_value='f23_turtlebot_lab.wbt',
+            default_value='turtlebot3_apriltags.wbt',
             description='Choose one of the world files from `/webots_ros2_turtlebot/world` directory'
         ),
         DeclareLaunchArgument(
@@ -115,15 +147,16 @@ def generate_launch_description():
         webots,
         webots._supervisor,
         waiting_nodes,
-
         robot_state_publisher,
         footprint_publisher,
-
         turtlebot_driver,
-
-        # This action will kill all nodes once the Webots simulation has exited
-        launch.actions.RegisterEventHandler(
-            event_handler=launch.event_handlers.OnProcessExit(
+        camera_node,
+        apriltag_node,
+        rqt_image_view_node,
+        detection_echo,
+        image_color_echo,
+        RegisterEventHandler(
+            event_handler=OnProcessExit(
                 target_action=webots,
                 on_exit=[
                     launch.actions.EmitEvent(event=launch.events.Shutdown())
