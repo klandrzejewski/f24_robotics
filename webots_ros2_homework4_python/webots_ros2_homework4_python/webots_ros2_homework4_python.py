@@ -112,7 +112,7 @@ class WallWalker(Node):
         # Wall-following logic
         
         # Output position for logging
-        # self.get_logger().info(f'Position: {self.current_pos}')
+        self.get_logger().info(f'Position: {self.current_pos}')
 
         # Check if it has found the wall recently
         if right_lidar_min > SAFE_STOP_DISTANCE + 0.35 and (current_time - self.time_last_wall > 5.0):
