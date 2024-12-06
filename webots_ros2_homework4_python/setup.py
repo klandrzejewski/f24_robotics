@@ -7,7 +7,7 @@ data_files.append(('share/ament_index/resource_index/packages', ['resource/' + p
 data_files.append(('share/' + package_name + '/launch', ['launch/f23_robotics_4_launch.py']))
 
 data_files.append(('share/' + package_name + '/worlds', [
-    'worlds/turtlebot3_apriltags.wbt', 
+    'worlds/FirstFloorStudentCenter.wbt', 
 ]))
 data_files.append(('share/' + package_name, ['package.xml']))
 data_files.append(('share/' + package_name + '/resource', [
