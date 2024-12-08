@@ -40,7 +40,7 @@ source install/setup.bash
 
 6. Start webots simulation with connect back to ROS in the virtual machine
 <pre>
-ros2 launch webots_ros2_homework1_python f23_robotics_1_launch.py
+ros2 launch webots_ros2_project2_python f23_robotics_1_launch.py
 </pre>
 
 
@@ -83,6 +83,6 @@ ros2 run teleop_twist_keyboard teleop_twist_keyboard
 ### RUN SAMPLE CONTROLLER
 
 <pre>
-ros2 run webots_ros2_homework1_python webots_ros2_homework1_python
+ros2 run webots_ros2_project2_python webots_ros2_project2_python
 </pre>
 

@@ -32,7 +32,7 @@ from webots_ros2_driver.wait_for_controller_connection import WaitForControllerC
 
 
 def generate_launch_description():
-    package_dir = get_package_share_directory('webots_ros2_homework2_python')
+    package_dir = get_package_share_directory('webots_ros2_project2_python')
     world = LaunchConfiguration('world')
     mode = LaunchConfiguration('mode')
     use_sim_time = LaunchConfiguration('use_sim_time', default=True)
@@ -104,7 +104,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             'world',
-            default_value='f23_robotics_1.wbt',
+            default_value='maze.wbt',
             description='Choose one of the world files from `/webots_ros2_turtlebot/world` directory'
         ),
         DeclareLaunchArgument(

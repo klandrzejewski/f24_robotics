@@ -1,13 +1,13 @@
 from setuptools import find_packages, setup
 
-package_name = 'webots_ros2_homework1_python'
+package_name = 'webots_ros2_project2_python'
 
 data_files = []
 data_files.append(('share/ament_index/resource_index/packages', ['resource/' + package_name]))
 data_files.append(('share/' + package_name + '/launch', ['launch/f23_robotics_1_launch.py']))
 
 data_files.append(('share/' + package_name + '/worlds', [
-    'worlds/f23_robotics_1.wbt', 
+    'worlds/maze.wbt', 
 ]))
 data_files.append(('share/' + package_name, ['package.xml']))
 data_files.append(('share/' + package_name + '/resource', [
@@ -29,7 +29,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'launch.frontend.launch_extension': ['launch_ros = launch_ros'],    
-        'console_scripts': ['webots_ros2_homework1_python = webots_ros2_homework1_python.webots_ros2_homework1_python:main']
+        'console_scripts': ['webots_ros2_project2_python = webots_ros2_project2_python.webots_ros2_project2_python:main']
     },
 
 )
