@@ -1,4 +1,4 @@
-# Homework 1 ROS2 Notes
+# Project ROS2 Notes - from Dr. Anderson's f24_robotics
 
 
 ### TO INSTALL PACKAGE FOR ASSIGNMENT 
