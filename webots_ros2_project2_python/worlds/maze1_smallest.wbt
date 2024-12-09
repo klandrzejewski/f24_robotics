@@ -3,7 +3,6 @@
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/backgrounds/protos/TexturedBackground.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/floors/protos/RectangleArena.proto"
-EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/appearances/protos/Parquetry.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/apartment_structure/protos/Wall.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/monicadelaine/webots_apriltag/master/apriltags/protos/tag36_11_00000.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/devices/robotis/protos/RobotisLds01.proto"
@@ -12,8 +11,8 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/project
 WorldInfo {
 }
 Viewpoint {
-  orientation 0.0022765014210180293 3.789897009265606e-05 -0.9999974080491151 3.10694186181706
-  position 12.541956410020735 0.3240462620406074 2.0973426527349592
+  orientation 0.4183707985066417 -0.0016433349980335282 -0.908274834181262 3.1487205296096876
+  position 5.35837938090177 -0.3470383156855688 6.1151997190406595
 }
 tag36_11_00000 {
   translation 0 0 0.15
@@ -53,8 +52,7 @@ TexturedBackgroundLight {
 }
 RectangleArena {
   floorSize 7 7
-  floorAppearance Parquetry {
-  }
+  floorTileSize 1 1
 }
 Wall {
   translation -3.44 0 0

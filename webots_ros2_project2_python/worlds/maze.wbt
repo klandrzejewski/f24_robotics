@@ -3,7 +3,6 @@
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/backgrounds/protos/TexturedBackground.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/floors/protos/RectangleArena.proto"
-EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/appearances/protos/Parquetry.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/apartment_structure/protos/Wall.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/devices/robotis/protos/RobotisLds01.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/robots/robotis/turtlebot/protos/TurtleBot3Burger.proto"
@@ -18,13 +17,9 @@ TexturedBackground {
 }
 TexturedBackgroundLight {
 }
-tag36_11_00000{
-  rotation 0 0 1 0
-  translation 0 0 0.15
-}
 TurtleBot3Burger {
   translation -0.559 -0.0183 0
-  rotation -0.00119 -0.0183 -1 0.126
+  rotation -0.0011897999483280344 -0.018296923575128597 -0.9998318893512894 0.126
   controller "<extern>"
   controllerArgs [
     ""
@@ -40,23 +35,20 @@ TurtleBot3Burger {
       translation 0.06 0 0
       children [
         Pose {
-          translation 0 0 0
           rotation 0 1 0 1.57
         }
       ]
+      fieldOfView 1
       width 3280
       height 2464
-      fieldOfView 1
     }
-
     RobotisLds01 {
     }
   ]
 }
 RectangleArena {
   floorSize 15 15
-  floorAppearance Parquetry {
-  }
+  floorTileSize 3 3
 }
 Wall {
   translation -7.39 0 0
