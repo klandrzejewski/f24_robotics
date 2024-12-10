@@ -1,7 +1,15 @@
-# Project ROS2 Notes - from Dr. Anderson's f24_robotics
+# Project Part 3 ROS2
+
+This package includes the controller and launch file for Part 3 of the Project in CS 460/560, the analysis of coverage. The controller utilizes a wall following method to complete its coverage. The robot uses its right lidar readings to maneuver the room and determine if it is too close or far from the wall and will adjust accordingly. 
+
+#### Wall Following Method
+To begin, the robot checks if the right lidar is measuring less than its safe stop distance, which is comprised of the addition of a stop distance of 0.2, to ensure the robot would have time to stop, and a lidar error factor of 0.05, to account for any error in the lidar, for a value of 0.25, which would indicate that the robot is too close to the right wall. If this is true, the robot will turn slightly to the left 0.1 at a rate of 0.10, to accommodate for the closeness. If the right lidar is reading greater than the safe stop distance plus 0.2, making a 0.45 minimum reading, the robot realizes that it is too far from the right wall and it turns right at -0.18 at a rate of 0.1. Otherwise, the robot feels that the distance to the wall is optimal, and it will move forward at a rate of 0.22.
+
+#### Obstacle Avoidance
+In order to properly handle objects in its path, the robot recognizes when the front lidar has a reading less than the lidar avoid distance of 0.7. The robot slows down to a rate of 0.07 and turns in order to avoid the object. The direction it turns depends on how long it has been since it has seen a wall. When the robot follows the wall at a too close or optimal length, it sets a found_wall flag as True and updates the time_last_wall variable with the current time. If the right lidar is at least 1.05 and the time since it last found the wall is greater than 5 seconds, then it sets the flag as false. This flag is used when the robot encounters an obstacle in front of it, as if the right lidar is greater than 1, but it has recently seen the wall, it will turn right, otherwise, it will turn left. This logic is due to wanting the robot to turn left in order to find the wall on its right side if it is unable to rediscover it, but if there is a situation in which the wall turns right, such as a door opening, then I want the robot to continue to follow the wall through the door opening and turn right.
 
 
-### TO INSTALL PACKAGE FOR ASSIGNMENT 
+### TO INSTALL PACKAGE FOR ASSIGNMENT - From monicadelaine/f24_robotics Github 
 
 1. Set up environment variables for ROS. Make sure to replace '/home/rpi/shared' with your own shared folder location
 <pre>
